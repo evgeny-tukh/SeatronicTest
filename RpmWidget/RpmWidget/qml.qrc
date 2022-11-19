@@ -1,0 +1,14 @@
+<RCC>
+    <qresource prefix="/">
+        <file>main.qml</file>
+        <file>RpmWidget/TickMark.qml</file>
+        <file>RpmWidget/TickTag.qml</file>
+        <file>RpmWidget/TickTags.qml</file>
+        <file>RpmWidget/TickMarks.qml</file>
+        <file>RpmWidget/ValueIndicator.qml</file>
+        <file>RpmWidget/RpmDisplay.qml</file>
+        <file>RpmWidget/GraphicalDisplay.qml</file>
+        <file>RpmWidget/Gauge.qml</file>
+        <file>RpmWidget/RpmWidget.qml</file>
+    </qresource>
+</RCC>
