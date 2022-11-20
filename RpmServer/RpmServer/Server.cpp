@@ -154,5 +154,6 @@ void Server::storeToFile (const int rpm, const bool validity) const {
     Data data;
     data ["rpm"] = std::to_string (rpm);
     data ["validity"] = std::to_string (validity);
+    data ["timestamp"] = std::to_string (time (nullptr));
     output << data.serialize ();
 }
