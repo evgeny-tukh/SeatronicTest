@@ -18,6 +18,8 @@ Server::Server (
     std::string _dbName,
     std::string _userName,
     std::string _pw,
+    time_t _timeout,
+    bool _echo,
     std::string _inputFilePath,
     const bool _saveToFile,
     QObject *_parent
@@ -26,13 +28,15 @@ Server::Server (
     dbHost (nullptr),
     connected (false),
     saveToFile (_saveToFile),
+    echo (_echo),
     port (_port),
     dbName (_dbName),
     userName (_userName),
     pw (_pw),
     server (_server),
     inputFilePath (_inputFilePath),
-    socketWrapper (this) {
+    socketWrapper (this),
+    timeout (_timeout) {
 }
 
 Server::~Server () {
@@ -41,7 +45,7 @@ Server::~Server () {
 
 void Server::run (uint32_t lifeTime) {
     std::thread runner ([this, lifeTime] () {
-        dbHost = new DbHost ("QPSQL7", dbName, userName, pw);
+        dbHost = new DbHost ("QPSQL7", dbName, userName, pw, echo);
 
         if (inputFilePath.empty ()) {
             runAsNormalRunner (lifeTime);
@@ -124,15 +128,27 @@ bool Server::waitProcessIncomingConnection () {
 }
 
 void Server::checkProcessAccumulator () {
-    std::cout << accumulator << std::endl;
+    if (echo) std::cout << accumulator << std::endl;
 
     Sentence sentence (accumulator);
     if (sentence.type ().compare ("RPM") == 0 && sentence.size () >= 6) {
         auto talker = sentence.talkerID ();
         auto rpm = sentence.omitted (3) ? 0.0 : std::stof (sentence [3]);
         bool valid = sentence.omitted (5) ? false : (sentence [5].front () == 'A');
-        std::cout << "RPM: " << rpm << "; validity: " << (valid ? "yes" : "no") << std::endl;
-        if (saveToFile) storeToFile ((int) rpm, valid);
+        if (echo) {
+            std::cout << "RPM: " << rpm << "; validity: " << (valid ? "yes" : "no") << std::endl;
+        }
+        time_t timestamp = time (nullptr);
+        char validity;
+        if (!valid) {
+            validity = 'V';
+        } else if (false) {
+            validity = 'O';
+        } else {
+            validity = 'A';
+        }
+        dbHost->populate (timestamp, rpm, validity);
+        if (saveToFile) storeToFile (timestamp, (int) rpm, valid);
     }
 }
 
@@ -158,11 +174,11 @@ std::istream& operator >> (std::istream& stream, Server& self) {
     return stream;
 }
 
-void Server::storeToFile (const int rpm, const bool validity) const {
+void Server::storeToFile (time_t timestamp, const int rpm, const bool validity) const {
     std::ofstream output ("server.dat", std::ios_base::out | std::ios_base::trunc);
     Data data;
     data ["rpm"] = std::to_string (rpm);
     data ["validity"] = std::to_string (validity);
-    data ["timestamp"] = std::to_string (time (nullptr));
+    data ["timestamp"] = std::to_string (timestamp);
     output << data.serialize ();
 }

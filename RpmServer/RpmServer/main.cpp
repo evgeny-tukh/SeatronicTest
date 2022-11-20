@@ -16,6 +16,8 @@ int main(int argc, char *argv[])
     std::cout << "RPM NMEA Server" << std::endl;
 
     uint16_t port = 0;
+    time_t timeout = 0;
+    bool echo = false;
     std::string server { "localhost"};
     std::string dbName { "data" };
     std::string userName, password;
@@ -67,6 +69,8 @@ int main(int argc, char *argv[])
 
     Data cfg ("server.cfg");
     auto portString = cfg ["port"];
+    auto timeoutString = cfg ["timeout"];
+    auto echoString = cfg ["echo"];
     server = cfg ["server"];
     dbName = cfg ["dbName"];
     userName = cfg ["userName"];
@@ -80,12 +84,22 @@ int main(int argc, char *argv[])
         port = 0;
     }
     try {
+        echo = std::stoi (echoString) != 0;
+    } catch (...) {
+        echo = false;
+    }
+    try {
+        timeout = std::stoi (timeoutString);
+    } catch (...) {
+        timeout = 30;
+    }
+    try {
         saveToFile = std::stoi (saveToFileString) != 0;
     } catch (...) {
         saveToFile = false;
     }
 
-    Server srv (port, server, dbName, userName, password, inputFilePath, saveToFile);
+    Server srv (port, server, dbName, userName, password, timeout, echo, inputFilePath, saveToFile);
 
     QObject::connect (& srv, SIGNAL (finished()), & app, SLOT (quit ()));
 

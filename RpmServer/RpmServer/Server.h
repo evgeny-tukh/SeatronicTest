@@ -19,6 +19,8 @@ class Server: public QObject {
             std::string _dbName,
             std::string _userName,
             std::string _pw,
+            time_t _timeout = 30,
+            bool _echo = false,
             std::string _inputFilePath = "",
             const bool saveToFile = false,
             QObject *_parent = nullptr
@@ -36,11 +38,12 @@ class Server: public QObject {
     private:
         DbHost *dbHost;
         std::string accumulator;
-        bool connected, saveToFile;
+        bool connected, saveToFile, echo;
         int port;
         std::string dbName, userName, pw, server;
         std::string inputFilePath;
         QTcpServer socketWrapper;
+        time_t timeout;
 
         bool waitProcessIncomingConnection ();
         void checkProcessAccumulator ();
@@ -49,7 +52,7 @@ class Server: public QObject {
         void runAsNormalRunner (uint32_t lifeTime);
         void runAsFileRunner (uint32_t lifeTime);
 
-        void storeToFile (const int rpm, const bool validity) const;
+        void storeToFile (time_t timestamp, const int rpm, const bool validity) const;
 };
 
 #endif // SERVER_H
