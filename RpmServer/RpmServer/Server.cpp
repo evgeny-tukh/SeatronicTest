@@ -10,21 +10,33 @@
 #include <ios>
 
 #include "Sentence.h"
+#include "Data.h"
 
 Server::Server (
-    int _port,
+    const int _port,
     std::string _server,
     std::string _dbName,
     std::string _userName,
     std::string _pw,
-    std::string _filePath,
+    std::string _inputFilePath,
+    const bool _saveToFile,
     QObject *_parent
-): QObject (_parent), port (_port), dbName (_dbName), userName (_userName), pw (_pw), server (_server), socketWrapper (this), connected (false), filePath (_filePath) {
+):
+    QObject (_parent),
+    connected (false),
+    saveToFile (_saveToFile),
+    port (_port),
+    dbName (_dbName),
+    userName (_userName),
+    pw (_pw),
+    server (_server),
+    inputFilePath (_inputFilePath),
+    socketWrapper (this) {
 }
 
 void Server::run (uint32_t lifeTime) {
     std::thread runner ([this, lifeTime] () {
-        if (filePath.empty ()) {
+        if (inputFilePath.empty ()) {
             runAsNormalRunner (lifeTime);
         } else {
             runAsFileRunner (lifeTime);
@@ -52,7 +64,7 @@ void Server::runAsNormalRunner (uint32_t lifeTime) {
 }
 
 void Server::runAsFileRunner (uint32_t lifeTime) {
-    std::cout << "Try to read the file '" << filePath << "'..." << std::endl;
+    std::cout << "Try to read the file '" << inputFilePath << "'..." << std::endl;
     time_t startTime = time (nullptr);
     while (readFileOnce ()) {
         if (!lifeTime || (time (nullptr) - startTime) < lifeTime) {
@@ -68,9 +80,9 @@ void Server::runAsFileRunner (uint32_t lifeTime) {
 }
 
 bool Server::readFileOnce () {
-    std::ifstream stream (filePath.c_str ());
+    std::ifstream stream (inputFilePath.c_str ());
     if (stream.rdstate ()) {
-        std::cout << "Unable to get file " << filePath << " content" << std::endl;
+        std::cout << "Unable to get file " << inputFilePath << " content:" << stream.rdstate () << std::endl;
         return false;
     }
     while (stream.rdstate () == 0) {
@@ -111,6 +123,7 @@ void Server::checkProcessAccumulator () {
         auto rpm = sentence.omitted (3) ? 0.0 : std::stof (sentence [3]);
         bool valid = sentence.omitted (5) ? false : (sentence [5].front () == 'A');
         std::cout << "RPM: " << rpm << "; validity: " << (valid ? "yes" : "no") << std::endl;
+        if (saveToFile) storeToFile ((int) rpm, valid);
     }
 }
 
@@ -134,4 +147,12 @@ std::istream& operator >> (std::istream& stream, Server& self) {
         }
     }
     return stream;
+}
+
+void Server::storeToFile (const int rpm, const bool validity) const {
+    std::ofstream output ("server.dat", std::ios_base::out | std::ios_base::trunc);
+    Data data;
+    data ["rpm"] = std::to_string (rpm);
+    data ["validity"] = std::to_string (validity);
+    output << data.serialize ();
 }

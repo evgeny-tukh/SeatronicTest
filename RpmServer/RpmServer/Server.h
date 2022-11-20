@@ -12,12 +12,13 @@ class Server: public QObject {
 
     public:
         Server (
-            int _port,
+            const int _port,
             std::string _server,
             std::string _dbName,
             std::string _userName,
             std::string _pw,
-            std::string _filePath = "",
+            std::string _inputFilePath = "",
+            const bool saveToFile = false,
             QObject *_parent = nullptr
         );
 
@@ -31,10 +32,10 @@ class Server: public QObject {
 
     private:
         std::string accumulator;
-        bool connected;
+        bool connected, saveToFile;
         int port;
         std::string dbName, userName, pw, server;
-        std::string filePath;
+        std::string inputFilePath;
         QTcpServer socketWrapper;
 
         bool waitProcessIncomingConnection ();
@@ -43,6 +44,8 @@ class Server: public QObject {
 
         void runAsNormalRunner (uint32_t lifeTime);
         void runAsFileRunner (uint32_t lifeTime);
+
+        void storeToFile (const int rpm, const bool validity) const;
 };
 
 #endif // SERVER_H

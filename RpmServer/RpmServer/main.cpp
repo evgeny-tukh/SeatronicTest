@@ -7,6 +7,7 @@
 #include <string>
 
 #include "Server.h"
+#include "Data.h"
 
 int main(int argc, char *argv[])
 {
@@ -18,13 +19,14 @@ int main(int argc, char *argv[])
     std::string server { "localhost"};
     std::string dbName { "data" };
     std::string userName, password;
-    std::string filePath;
+    std::string inputFilePath;
 
+    #if 0
     for (int i = 1; i < argc; ++ i) {
         auto arg = argv [i];
 
         if (arg [0] == '-' && (arg [1] == 'h' || arg [1] == 'H' || arg [1] == '?')) {
-            std::cout << "USAGE" << std::endl << "\tRPMSERVER [-p:port] [-s:dbserver] [-u:dbusername] [-a:dbpass]" << std::endl << "or\n" << "\tRPMSERVER -f:filepath" << std::endl;
+            std::cout << "USAGE" << std::endl << "\tRPMSERVER [-p:port] [-s:dbserver] [-u:dbusername] [-a:dbpass]" << std::endl << "or\n" << "\tRPMSERVER -f:inputfilepath" << std::endl;
             std::cout << "\n\nNote that if you don't specify database parameters so the server will write data in the file .dat" << std::endl;
             return 0;
         }
@@ -53,7 +55,7 @@ int main(int argc, char *argv[])
                 password = arg + 3; break;
             }
             case 'F': {
-                filePath = arg + 3; break;
+                inputFilePath = arg + 3; break;
             }
             default: {
                 std::cout << "Invalid argument: " << arg << std::endl;
@@ -61,8 +63,29 @@ int main(int argc, char *argv[])
             }
         }
     }
+    #endif
 
-    Server srv (port, server, dbName, userName, password, filePath);
+    Data cfg ("server.cfg");
+    auto portString = cfg ["port"];
+    server = cfg ["server"];
+    dbName = cfg ["dbName"];
+    userName = cfg ["userName"];
+    password = cfg ["password"];
+    inputFilePath = cfg ["inputFilePath"];
+    auto saveToFileString = cfg ["saveToFile"];
+    bool saveToFile;
+    try {
+        port = std::stoi (portString);
+    } catch (...) {
+        port = 0;
+    }
+    try {
+        saveToFile = std::stoi (saveToFileString) != 0;
+    } catch (...) {
+        saveToFile = false;
+    }
+
+    Server srv (port, server, dbName, userName, password, inputFilePath, saveToFile);
 
     QObject::connect (& srv, SIGNAL (finished()), & app, SLOT (quit ()));
 
