@@ -7,6 +7,7 @@
 #include <sstream>
 #include <fstream>
 #include <qtcpsocket.h>
+#include <QThread>
 #include <ios>
 
 #include "Sentence.h"
@@ -35,7 +36,7 @@ Server::Server (
     pw (_pw),
     server (_server),
     inputFilePath (_inputFilePath),
-    socketWrapper (this),
+    socketWrapper (nullptr),
     timeout (_timeout) {
 }
 
@@ -43,14 +44,29 @@ Server::~Server () {
     if (dbHost) delete dbHost;
 }
 
-void Server::run (uint32_t lifeTime) {
-    std::thread runner ([this, lifeTime] () {
+void Server::run () {
+    auto runner = QThread::create ([this] () {
         dbHost = new DbHost ("QPSQL7", dbName, userName, pw, echo);
 
         if (inputFilePath.empty ()) {
-            runAsNormalRunner (lifeTime);
+            runAsNormalRunner ();
         } else {
-            runAsFileRunner (lifeTime);
+            runAsFileRunner ();
+        }
+        delete dbHost;
+        dbHost = nullptr;
+        emit finished ();
+    });
+    runner->start ();
+
+    #if 0
+    std::thread runner ([this] () {
+        dbHost = new DbHost ("QPSQL7", dbName, userName, pw, echo);
+
+        if (inputFilePath.empty ()) {
+            runAsNormalRunner ();
+        } else {
+            runAsFileRunner ();
         }
         delete dbHost;
         dbHost = nullptr;
@@ -58,15 +74,19 @@ void Server::run (uint32_t lifeTime) {
     });
 
     runner.detach ();
+    #endif
 }
 
-void Server::runAsNormalRunner (uint32_t lifeTime) {
+void Server::runAsNormalRunner () {
     std::cout << "Waiting for first incoming connection..." << std::endl;
     time_t startTime = time (nullptr);
     while (waitProcessIncomingConnection ()) {
-        while (!lifeTime || (time (nullptr) - startTime) < lifeTime) {
-            if (lifeTime) {
-                printf ("%lld / %d   \r", time (nullptr) - startTime, lifeTime);
+        while (!timeout || (time (nullptr) - startTime) < timeout) {
+            if (socketWrapper->hasPendingConnections ()) {
+                std::cout << "We have a connection..." << std::endl;
+            }
+            if (timeout) {
+                printf ("%lld / %lld   \r", time (nullptr) - startTime, timeout);
             } else {
                 printf ("%lld\r", time (nullptr) - startTime);
             }
@@ -76,13 +96,13 @@ void Server::runAsNormalRunner (uint32_t lifeTime) {
     }
 }
 
-void Server::runAsFileRunner (uint32_t lifeTime) {
+void Server::runAsFileRunner () {
     std::cout << "Try to read the file '" << inputFilePath << "'..." << std::endl;
     time_t startTime = time (nullptr);
     while (readFileOnce ()) {
-        if (!lifeTime || (time (nullptr) - startTime) < lifeTime) {
-            if (lifeTime) {
-                printf ("%lld / %d   \r", time (nullptr) - startTime, lifeTime);
+        if (!timeout || (time (nullptr) - startTime) < timeout) {
+            if (timeout) {
+                printf ("%lld / %lld   \r", time (nullptr) - startTime, timeout);
             } else {
                 printf ("%lld\r", time (nullptr) - startTime);
             }
@@ -109,20 +129,48 @@ bool Server::readFileOnce () {
     return true;
 }
 
-bool Server::waitProcessIncomingConnection () {
-    connect (& socketWrapper, & QTcpServer::newConnection, this, [this] () {
-        printf ("Incoming connection deteced. Waiting for data...\n");
+void Server::onNewConnection () {
+    std::cout << std::endl << "Incoming connection detected. Waiting for data..." << std::endl;
+    auto incomingConection = socketWrapper->nextPendingConnection ();
+    auto onDataAvailable = [this, incomingConection] () {
+        auto data = incomingConection->readAll ();
+        std::cout << data.data () << std::endl;
+        std::stringstream output (data.data ());
+        output >> *this;
+    };
+    if (incomingConection->waitForReadyRead (60000)) {
+        std::cout << "Data in." << std::endl;
+    } else {
+        std::cout << "No data without 1 min - disconnecting" << std::endl;
+    }
+    #if 0
+    connect (incomingConection, & QTcpSocket::readyRead, this, onDataAvailable);
+    while (true) {
+        auto available = incomingConection->bytesAvailable () > 0;
+        std::cout << available << std::endl;
+        //if (available) {
+            onDataAvailable ();
+        //}
+        std::this_thread::sleep_for (std::chrono::microseconds (500));
+    }
+    #endif
+}
 
-        auto incomingConection = socketWrapper.nextPendingConnection ();
-        connect (incomingConection, & QTcpSocket::readyRead, this, [this, incomingConection] () {
-            auto data = incomingConection->readAll ();
-            std::cout << data.data () << std::endl;
-            std::stringstream output (data.data ());
-            output >> *this;
-        });
-    });
-    if (!socketWrapper.listen (QHostAddress::Any, port)) {
-        printf ("Unable to get listening at port %d: %s\n", port, socketWrapper.errorString ().toStdString ().c_str ()); return false;
+bool Server::waitProcessIncomingConnection () {
+    if (!socketWrapper) socketWrapper = new QTcpServer (nullptr);
+    //QHostAddress addr ("192.168.0.136");
+    //std::cout << connect (socketWrapper, SIGNAL (newConnection ()), this, SLOT (onNewConnection ())) << std::endl;
+    if (socketWrapper->listen (QHostAddress::Any, port)) {
+        std::cout << "Listening at port " << port << "..." << std::endl;
+    } else {
+        std::cout << "Unable to get listening at port " << port << ": " << socketWrapper->errorString ().toStdString () << std::endl;
+        return false;
+    }
+    if (socketWrapper->waitForNewConnection (timeout * 1000)) {
+        //std::cout << "Have a connection" << std::endl;
+        onNewConnection ();
+    } else {
+        std::cout << "No incoming connection within specified time - stopping" << std::endl;
     }
     return true;
 }

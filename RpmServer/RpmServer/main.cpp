@@ -1,7 +1,8 @@
 #include <iostream>
 #include <cstdint>
 #include <QCoreApplication>
-
+#include <QTcpServer>
+#include <QTcpSocket>
 #include <ctype.h>
 
 #include <string>
@@ -99,11 +100,30 @@ int main(int argc, char *argv[])
         saveToFile = false;
     }
 
-    Server srv (port, server, dbName, userName, password, timeout, echo, inputFilePath, saveToFile);
+    std::cout << "Lifetime is " << timeout << std::endl;
 
-    QObject::connect (& srv, SIGNAL (finished()), & app, SLOT (quit ()));
+    //Server srv (port, server, dbName, userName, password, timeout, echo, inputFilePath, saveToFile);
+    //
+    //QObject::connect (& srv, SIGNAL (finished()), & app, SLOT (quit ()));
+    //
+    //srv.run ();
 
-    srv.run (30);
+    QTcpServer socket (& app);
+    app.connect (& socket, & QTcpServer::newConnection, & app, [&socket, &app] () {
+        std::cout << std::endl << "Incoming connection detected. Waiting for data..." << std::endl;
+        auto incomingConection = socket.nextPendingConnection ();
+        incomingConection->connect (incomingConection, & QTcpSocket::readyRead, & app, [incomingConection] () {
+            auto data = incomingConection->readAll ();
+            std::cout << data.data () << std::endl;
+        });
+        incomingConection->connect (incomingConection, & QTcpSocket::disconnected, & app, [incomingConection] () {
+            std::cout << "Disconnected." << std::endl;
+            incomingConection->close ();
+        });
+    });
+
+    socket.listen (QHostAddress::Any, port);
+
 
     return app.exec();
 }

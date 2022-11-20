@@ -30,7 +30,10 @@ class Server: public QObject {
         friend std::istream& operator>> (std::istream &, Server&);
 
     public slots:
-        void run (uint32_t lifeTime = 0);
+        void run ();
+
+    private slots:
+        void onNewConnection ();
 
     signals:
         void finished ();
@@ -42,15 +45,15 @@ class Server: public QObject {
         int port;
         std::string dbName, userName, pw, server;
         std::string inputFilePath;
-        QTcpServer socketWrapper;
+        QTcpServer *socketWrapper;
         time_t timeout;
 
         bool waitProcessIncomingConnection ();
         void checkProcessAccumulator ();
         bool readFileOnce ();
 
-        void runAsNormalRunner (uint32_t lifeTime);
-        void runAsFileRunner (uint32_t lifeTime);
+        void runAsNormalRunner ();
+        void runAsFileRunner ();
 
         void storeToFile (time_t timestamp, const int rpm, const bool validity) const;
 };
