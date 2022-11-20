@@ -15,12 +15,16 @@ void Runner::run () {
         if (true/*!sender.bind ()*/) {
             sender.connectToHost ("localhost", port);
             if (sender.waitForConnected ()) {
-                std::cout << "Get connected. Sending data from '" /*<< filePath*/ << "'..." << std::endl;
+                std::cout << "Get connected. Sending data from '" << filePath << "'..." << std::endl;
                 time_t start = time (nullptr);
                 uint64_t totalSent = 0;
-                while ((time (nullptr) - start) <= lifetime) {
+                while ((time (nullptr) - start) <= lifetime && sender.state () == QAbstractSocket::ConnectedState) {
                     std::ifstream source (filePath);
                     while (source.good ()) {
+                        if (sender.state () != QAbstractSocket::ConnectedState) {
+                            std::cout << "It seems that server has unexpectedly stopped the connection." << std::endl;
+                            break;
+                        }
                         std::string line;
                         source >> line;
                         auto sent = sender.write (line.c_str (), line.length ());

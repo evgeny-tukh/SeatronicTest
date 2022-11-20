@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 #include <cstdint>
 #include <QCoreApplication>
 #include <QTcpServer>
@@ -9,6 +10,7 @@
 
 #include "Server.h"
 #include "Data.h"
+#include "Processor.h"
 
 int main(int argc, char *argv[])
 {
@@ -108,13 +110,16 @@ int main(int argc, char *argv[])
     //
     //srv.run ();
 
+    Processor processor (server, dbName, userName, password, echo, inputFilePath, saveToFile, & app);
     QTcpServer socket (& app);
-    app.connect (& socket, & QTcpServer::newConnection, & app, [&socket, &app] () {
+    app.connect (& socket, & QTcpServer::newConnection, & app, [&socket, &app, &processor] () {
         std::cout << std::endl << "Incoming connection detected. Waiting for data..." << std::endl;
         auto incomingConection = socket.nextPendingConnection ();
-        incomingConection->connect (incomingConection, & QTcpSocket::readyRead, & app, [incomingConection] () {
+        incomingConection->connect (incomingConection, & QTcpSocket::readyRead, & app, [incomingConection, &processor] () {
             auto data = incomingConection->readAll ();
             std::cout << data.data () << std::endl;
+            std::stringstream stream (data.data ());
+            stream >> processor;
         });
         incomingConection->connect (incomingConection, & QTcpSocket::disconnected, & app, [incomingConection] () {
             std::cout << "Disconnected." << std::endl;

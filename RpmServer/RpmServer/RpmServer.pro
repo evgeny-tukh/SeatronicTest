@@ -14,6 +14,7 @@ QMAKE_LFLAGS += /STACK:25600000
 SOURCES += \
         Data.cpp \
         DbHost.cpp \
+        Processor.cpp \
         Sentence.cpp \
         Server.cpp \
         Splitter.cpp \
@@ -27,6 +28,7 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 HEADERS += \
     Data.h \
     DbHost.h \
+    Processor.h \
     Sentence.h \
     Server.h \
     Splitter.h
