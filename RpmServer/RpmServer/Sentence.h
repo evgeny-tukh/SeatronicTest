@@ -16,6 +16,10 @@ class Sentence {
         Sentence& operator = (const std::string& source);
         const std::string& operator [] (const size_t index) const;
 
+        size_t size () { return fields.size (); }
+
+        bool omitted (const size_t index) const { return fields [index].empty (); }
+
     private:
         bool proprietary;
         std::string signature;

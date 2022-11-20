@@ -9,6 +9,8 @@
 #include <qtcpsocket.h>
 #include <ios>
 
+#include "Sentence.h"
+
 Server::Server (
     int _port,
     std::string _server,
@@ -102,6 +104,14 @@ bool Server::waitProcessIncomingConnection () {
 
 void Server::checkProcessAccumulator () {
     std::cout << accumulator << std::endl;
+
+    Sentence sentence (accumulator);
+    if (sentence.type ().compare ("RPM") == 0 && sentence.size () >= 6) {
+        auto talker = sentence.talkerID ();
+        auto rpm = sentence.omitted (3) ? 0.0 : std::stof (sentence [3]);
+        bool valid = sentence.omitted (5) ? false : (sentence [5].front () == 'A');
+        std::cout << "RPM: " << rpm << "; validity: " << (valid ? "yes" : "no") << std::endl;
+    }
 }
 
 std::istream& operator >> (std::istream& stream, Server& self) {
