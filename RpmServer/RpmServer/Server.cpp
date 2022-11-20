@@ -23,6 +23,7 @@ Server::Server (
     QObject *_parent
 ):
     QObject (_parent),
+    dbHost (nullptr),
     connected (false),
     saveToFile (_saveToFile),
     port (_port),
@@ -34,13 +35,21 @@ Server::Server (
     socketWrapper (this) {
 }
 
+Server::~Server () {
+    if (dbHost) delete dbHost;
+}
+
 void Server::run (uint32_t lifeTime) {
     std::thread runner ([this, lifeTime] () {
+        dbHost = new DbHost ("QPSQL7", dbName, userName, pw);
+
         if (inputFilePath.empty ()) {
             runAsNormalRunner (lifeTime);
         } else {
             runAsFileRunner (lifeTime);
         }
+        delete dbHost;
+        dbHost = nullptr;
         emit finished ();
     });
 

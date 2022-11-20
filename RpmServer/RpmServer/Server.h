@@ -7,6 +7,8 @@
 #include <iostream>
 #include <string>
 
+#include "DbHost.h"
+
 class Server: public QObject {
     Q_OBJECT
 
@@ -21,6 +23,7 @@ class Server: public QObject {
             const bool saveToFile = false,
             QObject *_parent = nullptr
         );
+        ~Server ();
 
         friend std::istream& operator>> (std::istream &, Server&);
 
@@ -31,6 +34,7 @@ class Server: public QObject {
         void finished ();
 
     private:
+        DbHost *dbHost;
         std::string accumulator;
         bool connected, saveToFile;
         int port;

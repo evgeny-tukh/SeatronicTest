@@ -1,5 +1,6 @@
 QT -= gui
 QT += network
+QT += sql
 
 CONFIG += c++11 console
 CONFIG -= app_bundle
@@ -10,6 +11,7 @@ CONFIG -= app_bundle
 
 SOURCES += \
         Data.cpp \
+        DbHost.cpp \
         Sentence.cpp \
         Server.cpp \
         Splitter.cpp \
@@ -22,6 +24,7 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 HEADERS += \
     Data.h \
+    DbHost.h \
     Sentence.h \
     Server.h \
     Splitter.h
