@@ -74,7 +74,8 @@ bool Server::readFileOnce () {
     while (stream.rdstate () == 0) {
         std::string buffer;
         stream >> buffer;
-        std::stringstream output (buffer.c_str ());
+        std::stringstream output;// (buffer.c_str ());
+        output << buffer;
         output >> *this;
         std::this_thread::sleep_for (std::chrono::milliseconds (100));
     }
@@ -100,12 +101,13 @@ bool Server::waitProcessIncomingConnection () {
 }
 
 void Server::checkProcessAccumulator () {
-
+    std::cout << accumulator << std::endl;
 }
 
 std::istream& operator >> (std::istream& stream, Server& self) {
-    char ch;
-    while (stream >> ch) {
+    while (stream.good ()) {
+        char ch = 0;
+        stream >> ch;
         switch (ch) {
             case '!': case '$': case '\n': case '\r': {
                 if (!self.accumulator.empty ()) {
