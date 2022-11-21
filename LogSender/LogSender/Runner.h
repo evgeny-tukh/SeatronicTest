@@ -10,7 +10,7 @@ class Runner: public QObject {
     Q_OBJECT
 
     public:
-        Runner (int _port, std::string _filePath, int _lifetime = 0x7FFFFFFF, QObject *parent = nullptr);
+        Runner (int _port, std::string _destHost, std::string _filePath, int _lifetime = 0x7FFFFFFF, QObject *parent = nullptr);
 
     public slots:
         void run ();
@@ -20,7 +20,7 @@ class Runner: public QObject {
 
     private:
         int port, lifetime;
-        std::string filePath;
+        std::string filePath, destHost;
 };
 
 #endif // RUNNER_H

@@ -7,13 +7,14 @@
 #include <cstdint>
 #include "Runner.h"
 
-Runner::Runner (int _port, std::string _filePath, int _lifetime, QObject *_parent): QObject (_parent), port (_port), lifetime (_lifetime), filePath (_filePath) {}
+Runner::Runner (int _port, std::string _destHost, std::string _filePath, int _lifetime, QObject *_parent):
+    QObject (_parent), port (_port), lifetime (_lifetime), filePath (_filePath), destHost (_destHost) {}
 
 void Runner::run () {
     std::thread worker ([this] () {
         QTcpSocket sender (nullptr);
         if (true/*!sender.bind ()*/) {
-            sender.connectToHost ("localhost", port);
+            sender.connectToHost (destHost.c_str (), port);
             if (sender.waitForConnected ()) {
                 std::cout << "Get connected. Sending data from '" << filePath << "'..." << std::endl;
                 time_t start = time (nullptr);
