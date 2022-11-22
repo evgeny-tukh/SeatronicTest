@@ -12,7 +12,7 @@ Splitter& Splitter::operator = (const std::string& source) {
 }
 
 const std::string& Splitter::operator [] (const size_t index) const {
-    if (index < 0 || index >= fields.size ()) throw (std::exception ("Invalid field index"));
+    if (index >= fields.size ()) throw (std::exception ());
     return fields [index];
 }
 

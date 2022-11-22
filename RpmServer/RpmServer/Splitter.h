@@ -17,8 +17,8 @@ class Splitter {
         void split (const std::string& source, char separator = ',');
 
         size_t size () const { return fields.size (); }
-        auto begin () const { return fields.cbegin (); }
-        auto end () const { return fields.cend (); }
+        std::vector<std::string>::const_iterator begin () const { return fields.cbegin (); }
+        std::vector<std::string>::const_iterator end () const { return fields.cend (); }
 
     private:
         std::vector<std::string> fields;

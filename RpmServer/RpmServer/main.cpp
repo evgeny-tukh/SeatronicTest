@@ -8,7 +8,6 @@
 
 #include <string>
 
-#include "Server.h"
 #include "Data.h"
 #include "Processor.h"
 
@@ -19,105 +18,70 @@ int main(int argc, char *argv[])
     std::cout << "RPM NMEA Server" << std::endl;
 
     uint16_t port = 0;
-    time_t timeout = 0;
+    uint32_t checkPeriod = 500;
+    time_t timeout = 0, dataTimeout = 30;
     bool echo = false;
-    std::string server { "localhost"};
-    std::string dbName { "data" };
+    std::string serverHost { "localhost"};
+    std::string dbName { "stvesseldata" };
+    std::string tableName { "current" };
+    std::string schemaName { "processed_data" };
     std::string userName, password;
     std::string inputFilePath;
-
-    #if 0
-    for (int i = 1; i < argc; ++ i) {
-        auto arg = argv [i];
-
-        if (arg [0] == '-' && (arg [1] == 'h' || arg [1] == 'H' || arg [1] == '?')) {
-            std::cout << "USAGE" << std::endl << "\tRPMSERVER [-p:port] [-s:dbserver] [-u:dbusername] [-a:dbpass]" << std::endl << "or\n" << "\tRPMSERVER -f:inputfilepath" << std::endl;
-            std::cout << "\n\nNote that if you don't specify database parameters so the server will write data in the file .dat" << std::endl;
-            return 0;
-        }
-
-        if (*arg != '-' || arg [2] != ':') {
-            std::cout << "Invalid argument: " << arg << std::endl;
-            return 0;
-        }
-
-        switch (toupper (arg [1])) {
-            case 'P': {
-                port = atoi (arg + 3);
-                if (!port) {
-                    std::cout << "Invalid port specified" << std::endl;
-                    return 0;
-                }
-                break;
-            }
-            case 'S': {
-                server = arg + 3; break;
-            }
-            case 'U': {
-                userName = arg + 3; break;
-            }
-            case 'A': {
-                password = arg + 3; break;
-            }
-            case 'F': {
-                inputFilePath = arg + 3; break;
-            }
-            default: {
-                std::cout << "Invalid argument: " << arg << std::endl;
-                return 0;
-            }
-        }
-    }
-    #endif
 
     Data cfg ("server.cfg");
     auto portString = cfg ["port"];
     auto timeoutString = cfg ["timeout"];
+    auto dataTimeoutString = cfg ["dataTimeout"];
+    auto checkPeriodString = cfg ["checkPeriod"];
     auto echoString = cfg ["echo"];
-    server = cfg ["server"];
+    serverHost = cfg ["serverHost"];
     dbName = cfg ["dbName"];
+    tableName = cfg ["tableName"];
+    schemaName = cfg ["schemaName"];
     userName = cfg ["userName"];
     password = cfg ["password"];
     inputFilePath = cfg ["inputFilePath"];
     auto saveToFileString = cfg ["saveToFile"];
     bool saveToFile;
-    try {
-        port = std::stoi (portString);
-    } catch (...) {
-        port = 0;
-    }
-    try {
-        echo = std::stoi (echoString) != 0;
-    } catch (...) {
-        echo = false;
-    }
-    try {
-        timeout = std::stoi (timeoutString);
-    } catch (...) {
-        timeout = 30;
-    }
-    try {
-        saveToFile = std::stoi (saveToFileString) != 0;
-    } catch (...) {
-        saveToFile = false;
-    }
+    auto str2int = [] (std::string source, int defValue = 0) {
+        int result = defValue;
+        try {
+            result = std::stoi (source);
+        } catch (...) {
+            result = defValue;
+        }
+        return result;
+    };
+    port = str2int (portString);
+    echo = str2int (echoString);
+    timeout = str2int (timeoutString, 30);
+    dataTimeout = str2int (dataTimeoutString, 30);
+    saveToFile = str2int (saveToFileString) != 0;
+    checkPeriod = str2int (checkPeriodString, 500);
 
     std::cout << "Lifetime is " << timeout << std::endl;
 
-    //Server srv (port, server, dbName, userName, password, timeout, echo, inputFilePath, saveToFile);
-    //
-    //QObject::connect (& srv, SIGNAL (finished()), & app, SLOT (quit ()));
-    //
-    //srv.run ();
-
-    Processor processor (server, dbName, userName, password, echo, inputFilePath, saveToFile, & app);
+    Processor processor (
+        serverHost,
+        dbName,
+        schemaName,
+        tableName,
+        userName,
+        password,
+        echo,
+        inputFilePath,
+        saveToFile,
+        dataTimeout,
+        checkPeriod,
+        & app
+    );
     QTcpServer socket (& app);
-    app.connect (& socket, & QTcpServer::newConnection, & app, [&socket, &app, &processor] () {
+    app.connect (& socket, & QTcpServer::newConnection, & app, [&socket, &app, &processor, echo] () {
         std::cout << std::endl << "Incoming connection detected. Waiting for data..." << std::endl;
         auto incomingConection = socket.nextPendingConnection ();
-        incomingConection->connect (incomingConection, & QTcpSocket::readyRead, & app, [incomingConection, &processor] () {
+        incomingConection->connect (incomingConection, & QTcpSocket::readyRead, & app, [echo, incomingConection, &processor] () {
             auto data = incomingConection->readAll ();
-            std::cout << data.data () << std::endl;
+            if (echo) std::cout << data.data () << std::endl;
             std::stringstream stream (data.data ());
             stream >> processor;
         });

@@ -7,8 +7,14 @@
 #include <cstdint>
 #include "Runner.h"
 
-Runner::Runner (int _port, std::string _destHost, std::string _filePath, int _lifetime, QObject *_parent):
-    QObject (_parent), port (_port), lifetime (_lifetime), filePath (_filePath), destHost (_destHost) {}
+Runner::Runner (int _port, std::string _destHost, std::string _filePath, int _lifetime, int _pause, QObject *_parent):
+    QObject (_parent),
+    port (_port),
+    lifetime (_lifetime),
+    pause (_pause),
+    filePath (_filePath),
+    destHost (_destHost) {
+}
 
 void Runner::run () {
     std::thread worker ([this] () {
@@ -21,6 +27,7 @@ void Runner::run () {
                 uint64_t totalSent = 0;
                 while ((time (nullptr) - start) <= lifetime && sender.state () == QAbstractSocket::ConnectedState) {
                     std::ifstream source (filePath);
+                    auto state = source.rdstate ();
                     while (source.good ()) {
                         if (sender.state () != QAbstractSocket::ConnectedState) {
                             std::cout << "It seems that server has unexpectedly stopped the connection." << std::endl;
@@ -38,7 +45,7 @@ void Runner::run () {
                         }
                     }
                     //std::cout << "Log has been sent. Rewinding." << std::endl;
-                    std::this_thread::sleep_for (std::chrono::microseconds (100));
+                    std::this_thread::sleep_for (std::chrono::microseconds (pause));
                 }
             } else {
                std::cout << "Connection error: " << sender.errorString ().toStdString () << "." << std::endl;

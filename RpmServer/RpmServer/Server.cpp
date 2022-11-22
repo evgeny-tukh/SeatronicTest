@@ -15,8 +15,10 @@
 
 Server::Server (
     const int _port,
-    std::string _server,
+    std::string _serverHost,
     std::string _dbName,
+    std::string _schemaName,
+    std::string _tableName,
     std::string _userName,
     std::string _pw,
     time_t _timeout,
@@ -32,9 +34,11 @@ Server::Server (
     echo (_echo),
     port (_port),
     dbName (_dbName),
+    schemaName (_schemaName),
+    tableName (_tableName),
     userName (_userName),
     pw (_pw),
-    server (_server),
+    serverHost (_serverHost),
     inputFilePath (_inputFilePath),
     socketWrapper (nullptr),
     timeout (_timeout) {
@@ -46,7 +50,7 @@ Server::~Server () {
 
 void Server::run () {
     auto runner = QThread::create ([this] () {
-        dbHost = new DbHost ("QPSQL7", dbName, userName, pw, echo);
+        dbHost = new DbHost ("QPSQL7", serverHost, dbName, schemaName, tableName, userName, pw, echo);
 
         if (inputFilePath.empty ()) {
             runAsNormalRunner ();
@@ -86,9 +90,9 @@ void Server::runAsNormalRunner () {
                 std::cout << "We have a connection..." << std::endl;
             }
             if (timeout) {
-                printf ("%lld / %lld   \r", time (nullptr) - startTime, timeout);
+                printf ("%ld / %ld   \r", time (nullptr) - startTime, timeout);
             } else {
-                printf ("%lld\r", time (nullptr) - startTime);
+                printf ("%ld\r", time (nullptr) - startTime);
             }
             std::this_thread::sleep_for (std::chrono::milliseconds (100));
         }
@@ -102,9 +106,9 @@ void Server::runAsFileRunner () {
     while (readFileOnce ()) {
         if (!timeout || (time (nullptr) - startTime) < timeout) {
             if (timeout) {
-                printf ("%lld / %lld   \r", time (nullptr) - startTime, timeout);
+                printf ("%ld / %ld   \r", time (nullptr) - startTime, timeout);
             } else {
-                printf ("%lld\r", time (nullptr) - startTime);
+                printf ("%ld\r", time (nullptr) - startTime);
             }
             std::this_thread::sleep_for (std::chrono::milliseconds (100));
             printf ("\nLog file has been passed through.\nRewinding...\n");
@@ -187,13 +191,13 @@ void Server::checkProcessAccumulator () {
             std::cout << "RPM: " << rpm << "; validity: " << (valid ? "yes" : "no") << std::endl;
         }
         time_t timestamp = time (nullptr);
-        char validity;
+        Validity validity;
         if (!valid) {
-            validity = 'V';
+            validity = Validity::INVALID;
         } else if (false) {
-            validity = 'O';
+            validity = Validity::OUTDATED;
         } else {
-            validity = 'A';
+            validity = Validity::VALID;
         }
         dbHost->populate (timestamp, rpm, validity);
         if (saveToFile) storeToFile (timestamp, (int) rpm, valid);

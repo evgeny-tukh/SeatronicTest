@@ -1,7 +1,7 @@
-import QtQuick 2.15
-import QtQuick.Window 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Dialogs 1.1
+import QtQuick 2.10
+import QtQuick.Window 2.10
+import QtQuick.Controls 2.10
+import QtQuick.Dialogs 1.3
 
 import "RpmWidget"
 
@@ -14,6 +14,8 @@ ApplicationWindow {
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
     color: "gray"
     property bool reallyClosingNow: false
+    property int rpm: 0;
+    property int validity: RpmWidget.Validity.Invalid
 
     MessageDialog {
         id: exitConfDlg
@@ -35,8 +37,8 @@ ApplicationWindow {
 
     RpmWidget {
         id: rpmWidget
-        rpm: 223
-        validity: RpmWidget.Validity.Valid
+        rpm: mainWnd.rpm
+        validity: mainWnd.validity
     }
 
     Text {
@@ -60,7 +62,7 @@ ApplicationWindow {
                 x: 60; y: 0; width: 80; height: 25
                 font.pixelSize: 16;
                 inputMask: "#009"
-                text: "158"
+                text: mainWnd.rpm.toString ()
                 padding: 1
                 leftPadding: 2
                 readOnly: false
@@ -90,6 +92,7 @@ ApplicationWindow {
                 padding: 0
                 leftPadding: 2
                 model: ["Valid", "Outdated", "Unreliable", "Invalid"]
+                currentIndex: mainWnd.validity - 1
                 onCurrentIndexChanged: {
                     var newValidity = currentIndex + 1
                     rpmWidget.validity = newValidity

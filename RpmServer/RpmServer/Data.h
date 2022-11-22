@@ -1,13 +1,16 @@
 #ifndef DATA_H
 #define DATA_H
 
+#include <QtCore>
 #include <string>
 #include <unordered_map>
 #include <iostream>
 
-class Data {
+class Data: public QObject {
+    Q_OBJECT
+
     public:
-        Data () {}
+        Data (QObject *parent = nullptr): QObject (parent) {}
         Data (const std::string filePath);
 
         std::string& operator [] (const std::string key);

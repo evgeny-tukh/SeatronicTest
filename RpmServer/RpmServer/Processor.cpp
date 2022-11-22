@@ -4,29 +4,49 @@
 #include "Data.h"
 
 Processor::Processor (
-        std::string _server,
+        std::string _serverHost,
         std::string _dbName,
+        std::string _schemaName,
+        std::string _tableName,
         std::string _userName,
         std::string _pw,
         bool _echo,
         std::string _inputFilePath,
-        const bool _saveToFile,
+        bool _saveToFile,
+        time_t _dataTimeout,
+        uint32_t _checkPeriod,
         QObject *_parent
 ):
     QObject (_parent),
     dbHost (nullptr),
     inputFilePath (_inputFilePath),
     dbName (_dbName),
+    schemaName (_schemaName),
+    tableName (_tableName),
     userName (_userName),
     pw (_pw),
-    server (_server),
+    serverHost (_serverHost),
     saveToFile (_saveToFile),
     echo (_echo) {
-    dbHost = new DbHost ("QPSQL7", dbName, userName, pw, echo);
+    dbHost = new DbHost ("QPSQL7", serverHost, dbName, schemaName, tableName, userName, pw, echo, this);
+    storage = new DataStorage (_dataTimeout, this);
+    checker = new QTimer (this);
+
+    checker->start (_checkPeriod);
+
+    connect (checker, & QTimer::timeout, this, [this] () {
+        time_t timestamp = 0;
+        int rpm = 0;
+        Validity validity = Validity::INVALID;
+
+        storage->checkUpToDate ();
+        storage->get (timestamp, rpm, validity);
+        dbHost->populate (timestamp, rpm, validity);
+        if (saveToFile) storeToFile (timestamp, rpm, validity);
+    });
 }
 
 Processor::~Processor () {
-    if (dbHost) delete dbHost;
 }
 
 std::istream& operator >> (std::istream& stream, Processor& self) {
@@ -63,16 +83,15 @@ void Processor::checkProcessAccumulator () {
             std::cout << "RPM: " << rpm << "; validity: " << (valid ? "yes" : "no") << std::endl;
         }
         time_t timestamp = time (nullptr);
-        char validity;
+        Validity validity;
         if (!valid) {
-            validity = 'V';
+            validity = Validity::INVALID;
         } else if (false) {
-            validity = 'O';
+            validity = Validity::OUTDATED;
         } else {
-            validity = 'A';
+            validity = Validity::VALID;
         }
-        dbHost->populate (timestamp, rpm, validity);
-        if (saveToFile) storeToFile (timestamp, (int) rpm, valid);
+        storage->update (timestamp, rpm, validity);
     }
 }
 
